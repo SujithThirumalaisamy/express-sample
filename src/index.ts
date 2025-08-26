@@ -23,6 +23,6 @@ app.use("/orders", OrdersRouter);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(3000, () => {
+app.listen(3000, "0.0.0.0", () => {
   console.log(`App is listening on port ${PORT}`);
 });
