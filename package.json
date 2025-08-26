@@ -1,9 +1,7 @@
 {
   "scripts": {
     "dev": "npx nodemon src/index.ts",
-    "prebuild": "npm install && npx prisma generate",
     "build": "tsc -b",
-    "preserve": "npm install && npx prisma generate",
     "start": "node dist/index.js"
   },
   "dependencies": {
