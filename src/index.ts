@@ -11,10 +11,10 @@ import "dotenv/config";
 const app = express();
 
 app.get("/health", (req: Request, res: Response) => {
-  res.send("The server is healthy!");
+  res.json({status: "The server is healthy!"});
 });
 
-app.use("/", SwaggerUI.serve, SwaggerUI.setup(SwaggerDocument));
+app.use("/docs", SwaggerUI.serve, SwaggerUI.setup(SwaggerDocument));
 
 app.use(express.json());
 app.use("/products", ProductsRouter);
