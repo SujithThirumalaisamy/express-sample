@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "project": 1,
+    "env": 1
+  },
+  "actives": {
+    "project": 1,
+    "env": 1
+  },
+  "projects": [
+    {
+      "idx": 1,
+      "id": "14292000000012001",
+      "name": "Convonite",
+      "domain": {
+        "id": "50030735198",
+        "name": "convonite-60046037580.development"
+      },
+      "timezone": "Asia/Kolkata",
+      "env": [
+        {
+          "idx": 1,
+          "id": "60046037580",
+          "name": "Development",
+          "type": 3
+        }
+      ]
+    }
+  ]
+}
