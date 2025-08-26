@@ -1,25 +1,17 @@
 import express from "express";
 import type { Request, Response } from "express";
-import SwaggerUI from "swagger-ui-express";
-
-import SwaggerDocument from "./swagger";
-import ProductsRouter from "./routes/product";
-import AuthRouter from "./routes/auth";
-import OrdersRouter from "./routes/order";
+import v1Router from "./routes/v1";
 
 import "dotenv/config";
 const app = express();
 
 app.get("/health", (req: Request, res: Response) => {
-  res.json({status: "The server is healthy!"});
+  res.json({ status: "The server is healthy!" });
 });
 
-app.use("/docs", SwaggerUI.serve, SwaggerUI.setup(SwaggerDocument));
-
 app.use(express.json());
-app.use("/products", ProductsRouter);
-app.use("/auth", AuthRouter);
-app.use("/orders", OrdersRouter);
+
+app.use("/v1", v1Router);
 
 const PORT = process.env.PORT || 3000;
 

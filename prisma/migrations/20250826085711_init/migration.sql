@@ -1,8 +1,8 @@
 -- CreateEnum
-CREATE TYPE "pubilc"."OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED');
+CREATE TYPE "public"."OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED');
 
 -- CreateTable
-CREATE TABLE "pubilc"."User" (
+CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE "pubilc"."User" (
 );
 
 -- CreateTable
-CREATE TABLE "pubilc"."Product" (
+CREATE TABLE "public"."Product" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -27,13 +27,13 @@ CREATE TABLE "pubilc"."Product" (
 );
 
 -- CreateTable
-CREATE TABLE "pubilc"."Order" (
+CREATE TABLE "public"."Order" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
     "orderPrice" INTEGER NOT NULL,
     "qty" INTEGER NOT NULL,
-    "status" "pubilc"."OrderStatus" NOT NULL DEFAULT 'PENDING',
+    "status" "public"."OrderStatus" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -41,10 +41,10 @@ CREATE TABLE "pubilc"."Order" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "pubilc"."User"("email");
+CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
 -- AddForeignKey
-ALTER TABLE "pubilc"."Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "pubilc"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "pubilc"."Order" ADD CONSTRAINT "Order_productId_fkey" FOREIGN KEY ("productId") REFERENCES "pubilc"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Order" ADD CONSTRAINT "Order_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
