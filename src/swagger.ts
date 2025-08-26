@@ -11,8 +11,12 @@ const swaggerDocument = {
       description: "Local development server",
     },
     {
-      url: "https://convonite.isujith.dev",
-      description: "Production server",
+      url: "https://convonite.isujith.dev/v1",
+      description: "Production server Custom Domain",
+    },
+    {
+      url: "https://convonite-50030735198.development.catalystappsail.in/v1",
+      description: "Production server Zoho Domain",
     },
   ],
   paths: {
