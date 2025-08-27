@@ -4,5 +4,13 @@
       "source": ".",
       "name": "Convonite"
     }
-  ]
+  ],
+  "functions": {
+    "targets": ["products", "orders"],
+    "ignore": [],
+    "source": "functions"
+  },
+  "client": {
+    "source": "client"
+  }
 }
