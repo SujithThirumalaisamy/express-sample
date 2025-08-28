@@ -3,7 +3,11 @@
 const { IncomingMessage, ServerResponse } = require("http");
 const catalyst = require("zcatalyst-sdk-node");
 
-const { parseRequest, initializeTable, ResponseHandler } = require("./utils");
+const {
+  parseRequest,
+  initializeTable,
+  ResponseHandler,
+} = require("@repo/utils");
 const OrderService = require("./services/orderService");
 const OrderController = require("./controllers/orderController");
 

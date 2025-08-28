@@ -1,0 +1,14 @@
+{
+  "name": "@repo/utils",
+  "version": "1.0.0",
+  "description": "Utilities for Functions and Client",
+  "main": "index.js",
+  "files": [
+    "*.js",
+    "*.ts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  }
+}
