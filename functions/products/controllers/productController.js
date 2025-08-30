@@ -1,6 +1,6 @@
 "use strict";
 
-const { RequestHandler } = require("@repo/utils");
+const { RequestHandler } = require("../utils");
 
 class ProductController {
   productService;
@@ -43,7 +43,7 @@ class ProductController {
         this.responseHandler.send(
           400,
           "400 Bad Request, Missing required fields: " +
-          requiredFields.join(", "),
+            requiredFields.join(", "),
         );
         return;
       }

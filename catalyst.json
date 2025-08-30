@@ -1,16 +1,15 @@
 {
-  "appsail": [
-    {
-      "source": ".",
-      "name": "Convonite"
-    }
-  ],
   "functions": {
-    "targets": ["products", "orders"],
+    "targets": [
+      "products",
+      "orders",
+      "test"
+    ],
     "ignore": [],
     "source": "functions"
   },
   "client": {
-    "source": "client"
+    "source": "client",
+    "plugin": "zcatalyst-cli-plugin-react"
   }
 }

@@ -1,6 +1,6 @@
 "use strict";
 
-const { RequestHandler } = require("@repo/utils");
+const { RequestHandler } = require("../utils");
 
 class OrderController {
   orderService;

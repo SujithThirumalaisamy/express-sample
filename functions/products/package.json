@@ -4,7 +4,6 @@
   "main": "index.js",
   "author": "sujithmasi1267@gmail.com",
   "dependencies": {
-    "zcatalyst-sdk-node": "latest",
-    "@repo/utils": "file:../../packages/utils"
+    "zcatalyst-sdk-node": "latest"
   }
 }

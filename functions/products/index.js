@@ -3,11 +3,7 @@
 const { IncomingMessage, ServerResponse } = require("http");
 const catalyst = require("zcatalyst-sdk-node");
 
-const {
-  parseRequest,
-  initializeTable,
-  ResponseHandler,
-} = require("@repo/utils");
+const { parseRequest, initializeTable, ResponseHandler } = require("./utils");
 const ProductService = require("./services/productService");
 const ProductController = require("./controllers/productController");
 
@@ -18,9 +14,17 @@ const ProductController = require("./controllers/productController");
  */
 module.exports = async (req, res) => {
   try {
+    const { url, method } = parseRequest(req);
+
+    // Could have been a separate func nvm
+    if (url.pathname === "/health") {
+      res.write("Products service is healthy!");
+      res.end();
+      return;
+    }
+
     const app = catalyst.initialize(req);
     const responseHandler = new ResponseHandler(res);
-    const { url, method } = parseRequest(req);
     const table = initializeTable("products", app);
 
     const productService = new ProductService(table);
