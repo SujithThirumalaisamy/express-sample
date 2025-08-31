@@ -16,7 +16,6 @@ module.exports = async (req, res) => {
   try {
     const { url, method } = parseRequest(req);
 
-    // Could have been a separate func nvm
     if (url.pathname === "/health") {
       res.write("Products service is healthy!");
       res.end();
@@ -39,6 +38,12 @@ module.exports = async (req, res) => {
         break;
       case "POST":
         await productController.handlePost(req);
+        break;
+      case "PUT":
+        await productController.handlePut(req, url);
+        break;
+      case "DELETE":
+        await productController.handleDelete(req, url);
         break;
       default:
         productController.handleMethodNotAllowed();

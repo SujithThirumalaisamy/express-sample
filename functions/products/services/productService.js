@@ -9,13 +9,35 @@ class ProductService {
     return await this.table.getRow(productId);
   }
 
+  async getAllProducts() {
+    return await this.table.getAllRows();
+  }
+
   async createProduct(productData) {
-    const { name, description, price } = productData;
+    const { NAME, DISCRIPTION, PRICE, AVAILABLITY } = productData;
     return await this.table.insertRow({
-      name,
-      description,
-      price,
+      NAME,
+      DISCRIPTION,
+      PRICE,
+      AVAILABLITY,
     });
+  }
+
+  async updateProduct(productId, productData) {
+    const { NAME, DISCRIPTION, PRICE, AVAILABLITY } = productData;
+    const response = await this.table.updateRow({
+      ROWID: productId,
+      NAME,
+      DISCRIPTION,
+      PRICE,
+      AVAILABLITY,
+    });
+
+    return response;
+  }
+
+  async deleteProduct(productId) {
+    return await this.table.deleteRow(productId);
   }
 }
 

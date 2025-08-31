@@ -19,6 +19,20 @@ class RequestHandler {
   getQueryParam(url, paramName) {
     return url.searchParams.get(paramName);
   }
+
+  validateRequiredFields(data, requiredFields) {
+    return requiredFields.every((field) => field in data);
+  }
+
+  extractFields(data, fields) {
+    const result = {};
+    for (const field of fields) {
+      if (field in data) {
+        result[field] = data[field];
+      }
+    }
+    return result;
+  }
 }
 
 module.exports = RequestHandler;

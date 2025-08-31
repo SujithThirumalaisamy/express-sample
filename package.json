@@ -1,5 +1,8 @@
 {
   "name": "convonite-sample",
   "version": "1.0.0",
-  "scripts": {}
+  "scripts": {},
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
 }

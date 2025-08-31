@@ -36,6 +36,12 @@ module.exports = async (req, res) => {
       case "POST":
         await orderController.handlePost(req);
         break;
+      case "PUT":
+        await orderController.handlePut(req, url);
+        break;
+      case "DELETE":
+        await orderController.handleDelete(req, url);
+        break;
       default:
         orderController.handleMethodNotAllowed();
     }

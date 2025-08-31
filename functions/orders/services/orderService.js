@@ -14,7 +14,22 @@ class OrderService {
   }
 
   async getAllOrders() {
-    return await this.table.getRows();
+    return await this.table.getAllRows();
+  }
+
+  async updateOrder(orderId, orderData) {
+    const { PRODUCTID, QUANTITY, ORDERPRICE, STATUS } = orderData;
+    return await this.table.updateRow({
+      ROWID: orderId,
+      PRODUCTID,
+      QUANTITY,
+      ORDERPRICE,
+      STATUS,
+    });
+  }
+
+  async deleteOrder(orderId) {
+    return await this.table.deleteRow(orderId);
   }
 }
 
