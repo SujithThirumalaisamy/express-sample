@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Product } from "../../services/api";
+import {
+  convertDbPriceToDisplay,
+  convertDisplayPriceToDb,
+} from "../../utils/formatters";
 
 interface ProductFormProps {
   product?: Product | null;
@@ -23,16 +27,19 @@ const ProductForm: React.FC<ProductFormProps> = ({
     PRICE: 0,
     AVAILABLITY: 0,
   });
+  const [displayPrice, setDisplayPrice] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (product) {
+      const displayPriceValue = convertDbPriceToDisplay(product.PRICE);
       setFormData({
         NAME: product.NAME,
         DISCRIPTION: product.DISCRIPTION,
         PRICE: product.PRICE,
         AVAILABLITY: product.AVAILABLITY,
       });
+      setDisplayPrice(displayPriceValue);
     }
   }, [product]);
 
@@ -47,7 +54,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       newErrors.DISCRIPTION = "Description is required";
     }
 
-    if (formData.PRICE <= 0) {
+    if (displayPrice <= 0) {
       newErrors.PRICE = "Price must be greater than 0";
     }
 
@@ -63,7 +70,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
     e.preventDefault();
 
     if (validateForm()) {
-      onSubmit(formData);
+      const dbPrice = convertDisplayPriceToDb(displayPrice);
+      onSubmit({
+        ...formData,
+        PRICE: dbPrice,
+      });
     }
   };
 
@@ -71,13 +82,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "PRICE" || name === "AVAILABLITY"
-          ? parseInt(value) || 0
-          : value,
-    }));
+
+    if (name === "PRICE") {
+      const priceValue = parseFloat(value) || 0;
+      setDisplayPrice(priceValue);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: name === "AVAILABLITY" ? parseInt(value) || 0 : value,
+      }));
+    }
 
     // Clear error when user starts typing
     if (errors[name]) {
@@ -145,24 +159,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
           htmlFor="PRICE"
           className="block text-sm font-medium text-gray-700"
         >
-          Price (in cents)
+          Price ($)
         </label>
         <input
           type="number"
           id="PRICE"
           name="PRICE"
-          value={formData.PRICE}
+          value={displayPrice}
           onChange={handleChange}
           min="0"
+          step="0.01"
           className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
             errors.PRICE ? "border-red-500" : ""
           }`}
         />
         <p className="mt-1 text-xs text-gray-500">
-          Display price:{" "}
-          <span className="text-orange-600 font-medium">
-            ${(formData.PRICE / 100).toFixed(2)}
-          </span>
+          Enter price in dollars (e.g., 10.99)
         </p>
         {errors.PRICE && (
           <p className="mt-1 text-sm text-red-600">{errors.PRICE}</p>

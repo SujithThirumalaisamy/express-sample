@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Order, Product } from "../../services/api";
 import { productsAPI } from "../../services/api";
+import {
+  convertDbPriceToDisplay,
+  convertDisplayPriceToDb,
+} from "../../utils/formatters";
 
 interface OrderFormProps {
   order?: Order | null;
@@ -20,6 +24,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
     ORDERPRICE: 0,
     STATUS: "PENDING",
   });
+  const [displayPrice, setDisplayPrice] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,12 +35,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
 
   useEffect(() => {
     if (order) {
+      const displayPriceValue = convertDbPriceToDisplay(order.ORDERPRICE);
       setFormData({
         PRODUCTID: order.PRODUCTID,
         QUANTITY: Number(order.QUANTITY),
         ORDERPRICE: order.ORDERPRICE,
         STATUS: order.STATUS,
       });
+      setDisplayPrice(displayPriceValue);
     }
   }, [order]);
 
@@ -62,7 +69,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
       newErrors.QUANTITY = "Quantity must be greater than 0";
     }
 
-    if (Number(formData.ORDERPRICE) <= 0) {
+    if (displayPrice <= 0) {
       newErrors.ORDERPRICE = "Order price must be greater than 0";
     }
 
@@ -78,9 +85,10 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
     e.preventDefault();
 
     if (validateForm()) {
+      const dbPrice = convertDisplayPriceToDb(displayPrice);
       const orderData = {
         ...formData,
-        ORDERPRICE: Number(formData.ORDERPRICE),
+        ORDERPRICE: dbPrice,
         QUANTITY: Number(formData.QUANTITY),
       };
       onSubmit(orderData);
@@ -93,11 +101,8 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
     const { name, value } = e.target;
 
     if (name === "ORDERPRICE") {
-      const numValue = parseFloat(value) || 0;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: numValue,
-      }));
+      const priceValue = parseFloat(value) || 0;
+      setDisplayPrice(priceValue);
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -125,12 +130,15 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
       const selectedProduct = products.find((p) => p.ROWID === productId);
       if (selectedProduct) {
         const quantity = formData.QUANTITY || 1;
-        const totalPrice = selectedProduct.PRICE * quantity;
+        const productDisplayPrice = convertDbPriceToDisplay(
+          selectedProduct.PRICE,
+        );
+        const totalPrice = productDisplayPrice * quantity;
         setFormData((prev) => ({
           ...prev,
           PRODUCTID: productId,
-          ORDERPRICE: totalPrice,
         }));
+        setDisplayPrice(totalPrice);
       }
     }
 
@@ -156,12 +164,15 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
         (p) => p.ROWID === formData.PRODUCTID,
       );
       if (selectedProduct) {
-        const totalPrice = selectedProduct.PRICE * quantity;
+        const productDisplayPrice = convertDbPriceToDisplay(
+          selectedProduct.PRICE,
+        );
+        const totalPrice = productDisplayPrice * quantity;
         setFormData((prev) => ({
           ...prev,
           QUANTITY: quantity,
-          ORDERPRICE: totalPrice,
         }));
+        setDisplayPrice(totalPrice);
       }
     }
 
@@ -243,7 +254,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
           htmlFor="ORDERPRICE"
           className="block text-sm font-medium text-gray-700"
         >
-          Order Price
+          Order Price ($)
         </label>
         <input
           type="number"
@@ -251,7 +262,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
           name="ORDERPRICE"
           min="0"
           step="0.01"
-          value={formData.ORDERPRICE.toString()}
+          value={displayPrice}
           onChange={handleChange}
           className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm ${
             errors.ORDERPRICE ? "border-red-500" : ""

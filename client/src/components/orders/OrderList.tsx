@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { ordersAPI, Order, Product } from "../../services/api";
 import { productsAPI } from "../../services/api";
+import { useToast } from "../../contexts/ToastContext";
+import {
+  formatCompactPrice,
+  formatPrice,
+  calculateTotalRevenue,
+  calculateAverageOrderValue,
+} from "../../utils/formatters";
 import OrderForm from "./OrderForm";
 
 const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const { showError, showSuccess } = useToast();
 
   useEffect(() => {
     fetchOrders();
@@ -27,9 +34,8 @@ const OrderList: React.FC = () => {
       setLoading(true);
       const response = await ordersAPI.getAll();
       setOrders(response.data);
-      setError(null);
     } catch (err) {
-      setError("Failed to fetch orders");
+      showError("Failed to fetch orders");
       console.error("Error fetching orders:", err);
     } finally {
       setLoading(false);
@@ -77,8 +83,9 @@ const OrderList: React.FC = () => {
       try {
         await ordersAPI.delete(id);
         setOrders(orders.filter((order) => order.ROWID !== id));
+        showSuccess("Order deleted successfully");
       } catch (err) {
-        setError("Failed to delete order");
+        showError("Failed to delete order");
         console.error("Error deleting order:", err);
       }
     }
@@ -111,14 +118,16 @@ const OrderList: React.FC = () => {
               : o,
           ),
         );
+        showSuccess("Order updated successfully");
       } else {
         const response = await ordersAPI.create(orderData);
         setOrders([...orders, response.data]);
+        showSuccess("Order created successfully");
       }
       setShowForm(false);
       setEditingOrder(null);
     } catch (err) {
-      setError("Failed to save order");
+      showError("Failed to save order");
       console.error("Error saving order:", err);
     }
   };
@@ -129,7 +138,7 @@ const OrderList: React.FC = () => {
   };
 
   const getTotalRevenue = () => {
-    return filteredOrders.reduce((sum, order) => sum + order.ORDERPRICE, 0);
+    return calculateTotalRevenue(filteredOrders);
   };
 
   const getStatusColor = (status: string) => {
@@ -197,15 +206,13 @@ const OrderList: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                ${getTotalRevenue().toFixed(2)}
+                {formatCompactPrice(getTotalRevenue())}
               </div>
               <div className="text-sm text-gray-600">Total Revenue</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-600">
-                {filteredOrders.length > 0
-                  ? (getTotalRevenue() / filteredOrders.length).toFixed(2)
-                  : "0.00"}
+                {formatCompactPrice(calculateAverageOrderValue(filteredOrders))}
               </div>
               <div className="text-sm text-gray-600">Average Order Value</div>
             </div>
@@ -247,26 +254,17 @@ const OrderList: React.FC = () => {
               placeholder="Search orders by product or status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="rounded-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              className="rounded-none block w-full pl-10 pr-3 py-2 border border-gray-300 leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
             />
           </div>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
       {/* Orders Grid */}
       {filteredOrders.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredOrders.map((order) => (
-            <div
-              key={order.ROWID}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
-            >
+            <div key={order.ROWID} className="bg-white overflow-hidden shadow">
               <div className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -284,7 +282,7 @@ const OrderList: React.FC = () => {
                       <strong>Quantity:</strong> {Number(order.QUANTITY)}
                     </p>
                     <div className="text-2xl font-bold text-green-600">
-                      ${order.ORDERPRICE.toFixed(2)}
+                      {formatPrice(order.ORDERPRICE)}
                     </div>
                     {order.CREATEDTIME && (
                       <p className="text-xs text-gray-500 mt-2">
@@ -295,7 +293,7 @@ const OrderList: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+              <div className="px-6 py-3">
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleEdit(order)}
