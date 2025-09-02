@@ -1,23 +1,23 @@
-const http = require('http');
+const http = require("http");
 
 function getRequestBody(req) {
   return new Promise((resolve, reject) => {
-    let body = '';
+    let body = "";
 
-    req.on('data', chunk => {
+    req.on("data", (chunk) => {
       body += chunk.toString();
     });
 
-    req.on('end', () => {
+    req.on("end", () => {
       try {
         const parsed = JSON.parse(body);
         resolve(parsed);
       } catch (err) {
-        reject(new Error('Invalid JSON'));
+        reject(new Error("Invalid JSON"));
       }
     });
 
-    req.on('error', err => {
+    req.on("error", (err) => {
       reject(err);
     });
   });
@@ -36,7 +36,7 @@ class RequestHandler {
   async parseJsonBody() {
     try {
       const body = await getRequestBody(this.req);
-      console.info('Parsed body:', body);
+      console.info("Parsed body:", body);
       return body;
     } catch (error) {
       console.error("Error parsing request body:", error);

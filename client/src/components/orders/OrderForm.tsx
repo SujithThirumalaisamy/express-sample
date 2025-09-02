@@ -332,7 +332,10 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
               </div>
               <div className="text-right">
                 <div className="font-medium text-gray-900">
-                  ${(Number(formData.ORDERPRICE) || 0).toFixed(2)}
+                  $
+                  {(convertDbPriceToDisplay(formData.ORDERPRICE) || 0).toFixed(
+                    2,
+                  )}
                 </div>
               </div>
             </div>
@@ -344,7 +347,8 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
                 Total Amount
               </span>
               <span className="text-2xl font-bold text-orange-600">
-                ${(Number(formData.ORDERPRICE) || 0).toFixed(2)}
+                $
+                {(convertDbPriceToDisplay(formData.ORDERPRICE) || 0).toFixed(2)}
               </span>
             </div>
           </div>
