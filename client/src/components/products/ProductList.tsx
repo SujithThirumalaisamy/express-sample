@@ -1,63 +1,65 @@
-import React, { useState, useEffect } from "react";
-import { productsAPI, Product } from "../../services/api";
+import React, { useState, useMemo } from "react";
+import { Product } from "../../services/api";
 import { useToast } from "../../contexts/ToastContext";
-import { formatPrice, formatCompactPrice } from "../../utils/formatters";
+import { formatPrice } from "../../utils/formatters";
 import ProductForm from "./ProductForm";
+import VerificationDialog from "../common/VerificationDialog";
+import {
+  useProducts,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from "../../hooks";
 
 const ProductList: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const { showError, showSuccess } = useToast();
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // React Query hooks
+  const { data: products = [], isLoading, error } = useProducts();
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+  const deleteProductMutation = useDeleteProduct();
 
-  useEffect(() => {
-    filterProducts();
+  // Filter products based on search term
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return products;
+    }
+    return products.filter(
+      (product: Product) =>
+        product.NAME.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.DISCRIPTION.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
   }, [products, searchTerm]);
 
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const response = await productsAPI.getAll();
-      setProducts(response.data);
-    } catch (err) {
-      showError("Failed to fetch products");
-      console.error("Error fetching products:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterProducts = () => {
-    if (!searchTerm.trim()) {
-      setFilteredProducts(products);
-    } else {
-      const filtered = products.filter(
-        (product) =>
-          product.NAME.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.DISCRIPTION.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-      setFilteredProducts(filtered);
-    }
-  };
-
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        await productsAPI.delete(id);
-        setProducts(products.filter((product) => product.ROWID !== id));
-        showSuccess("Product deleted successfully");
-      } catch (err) {
-        showError("Failed to delete product");
-        console.error("Error deleting product:", err);
-      }
+    setProductToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+
+    try {
+      await deleteProductMutation.mutateAsync(productToDelete);
+      showSuccess("Product deleted successfully");
+    } catch (err) {
+      showError("Failed to delete product");
+      console.error("Error deleting product:", err);
+    } finally {
+      setShowDeleteDialog(false);
+      setProductToDelete(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteDialog(false);
+    setProductToDelete(null);
   };
 
   const handleEdit = (product: Product) => {
@@ -73,31 +75,17 @@ const ProductList: React.FC = () => {
   ) => {
     try {
       if (editingProduct) {
-        await productsAPI.update(editingProduct.ROWID!, productData);
-        setProducts(
-          products.map((p) =>
-            p.ROWID === editingProduct.ROWID
-              ? {
-                  ...productData,
-                  ROWID: p.ROWID,
-                  CREATORID: p.CREATORID,
-                  CREATEDTIME: p.CREATEDTIME,
-                  MODIFIEDTIME: p.MODIFIEDTIME,
-                }
-              : p,
-          ),
-        );
+        await updateProductMutation.mutateAsync({
+          id: editingProduct.ROWID!,
+          productData,
+        });
+        showSuccess("Product updated successfully");
       } else {
-        const response = await productsAPI.create(productData);
-        setProducts([...products, response.data]);
+        await createProductMutation.mutateAsync(productData);
+        showSuccess("Product created successfully");
       }
       setShowForm(false);
       setEditingProduct(null);
-      showSuccess(
-        editingProduct
-          ? "Product updated successfully"
-          : "Product created successfully",
-      );
     } catch (err) {
       showError("Failed to save product");
       console.error("Error saving product:", err);
@@ -117,10 +105,28 @@ const ProductList: React.FC = () => {
     return { text: "In Stock", color: "bg-green-100 text-green-800" };
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-[85vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-[85vh]">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-2">
+            Error loading products
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -192,7 +198,7 @@ const ProductList: React.FC = () => {
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => {
+          {filteredProducts.map((product: Product) => {
             const availabilityStatus = getAvailabilityStatus(
               product.AVAILABLITY,
             );
@@ -330,7 +336,7 @@ const ProductList: React.FC = () => {
       {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-[600px] max-w-[90vw] shadow-lg bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-[600px] max-w-[90vw] max-h-[80vh] md:max-h-[80vh] h-[100vh] md:h-auto shadow-lg bg-white overflow-y-auto">
             <ProductForm
               product={editingProduct}
               onSubmit={handleFormSubmit}
@@ -339,6 +345,18 @@ const ProductList: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Verification Dialog */}
+      <VerificationDialog
+        isOpen={showDeleteDialog}
+        title="Delete Product"
+        message="Are you sure you want to delete this product? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        type="danger"
+      />
     </div>
   );
 };

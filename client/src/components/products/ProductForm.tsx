@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Product } from "../../services/api";
 import {
   convertDbPriceToDisplay,
@@ -16,94 +19,57 @@ interface ProductFormProps {
   onCancel: () => void;
 }
 
+const schema = z.object({
+  NAME: z.string().min(1, "Name is required"),
+  DISCRIPTION: z.string().min(1, "Description is required"),
+  PRICE: z.number().min(0.01, "Price must be greater than 0"),
+  AVAILABLITY: z.number().min(0, "Availability cannot be negative"),
+});
+
+type ProductFormData = z.infer<typeof schema>;
+
 const ProductForm: React.FC<ProductFormProps> = ({
   product,
   onSubmit,
   onCancel,
 }) => {
-  const [formData, setFormData] = useState({
-    NAME: "",
-    DISCRIPTION: "",
-    PRICE: 0,
-    AVAILABLITY: 0,
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      NAME: "",
+      DISCRIPTION: "",
+      PRICE: 0,
+      AVAILABLITY: 0,
+    },
   });
-  const [displayPrice, setDisplayPrice] = useState(0);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (product) {
       const displayPriceValue = convertDbPriceToDisplay(product.PRICE);
-      setFormData({
+      reset({
         NAME: product.NAME,
         DISCRIPTION: product.DISCRIPTION,
-        PRICE: product.PRICE,
+        PRICE: displayPriceValue,
         AVAILABLITY: product.AVAILABLITY,
       });
-      setDisplayPrice(displayPriceValue);
     }
-  }, [product]);
+  }, [product, reset]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.NAME.trim()) {
-      newErrors.NAME = "Name is required";
-    }
-
-    if (!formData.DISCRIPTION.trim()) {
-      newErrors.DISCRIPTION = "Description is required";
-    }
-
-    if (displayPrice <= 0) {
-      newErrors.PRICE = "Price must be greater than 0";
-    }
-
-    if (formData.AVAILABLITY < 0) {
-      newErrors.AVAILABLITY = "Availability cannot be negative";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const dbPrice = convertDisplayPriceToDb(displayPrice);
-      onSubmit({
-        ...formData,
-        PRICE: dbPrice,
-      });
-    }
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-
-    if (name === "PRICE") {
-      const priceValue = parseFloat(value) || 0;
-      setDisplayPrice(priceValue);
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: name === "AVAILABLITY" ? parseInt(value) || 0 : value,
-      }));
-    }
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+  const onSubmitForm = (data: ProductFormData) => {
+    const dbPrice = convertDisplayPriceToDb(data.PRICE);
+    onSubmit({
+      ...data,
+      PRICE: dbPrice,
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold mb-4">
           {product ? "Edit Product" : "Add New Product"}
@@ -117,18 +83,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
         >
           Product Name
         </label>
-        <input
-          type="text"
-          id="NAME"
+        <Controller
           name="NAME"
-          value={formData.NAME}
-          onChange={handleChange}
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
-            errors.NAME ? "border-red-500" : ""
-          }`}
+          control={control}
+          render={({ field }) => (
+            <input
+              autoFocus={true}
+              {...field}
+              type="text"
+              className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
+                errors.NAME ? "border-red-500" : ""
+              }`}
+            />
+          )}
         />
         {errors.NAME && (
-          <p className="mt-1 text-sm text-red-600">{errors.NAME}</p>
+          <p className="mt-1 text-sm text-red-600">{errors.NAME.message}</p>
         )}
       </div>
 
@@ -139,18 +109,23 @@ const ProductForm: React.FC<ProductFormProps> = ({
         >
           Description
         </label>
-        <textarea
-          id="DISCRIPTION"
+        <Controller
           name="DISCRIPTION"
-          value={formData.DISCRIPTION}
-          onChange={handleChange}
-          rows={3}
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
-            errors.DISCRIPTION ? "border-red-500" : ""
-          }`}
+          control={control}
+          render={({ field }) => (
+            <textarea
+              {...field}
+              rows={3}
+              className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
+                errors.DISCRIPTION ? "border-red-500" : ""
+              }`}
+            />
+          )}
         />
         {errors.DISCRIPTION && (
-          <p className="mt-1 text-sm text-red-600">{errors.DISCRIPTION}</p>
+          <p className="mt-1 text-sm text-red-600">
+            {errors.DISCRIPTION.message}
+          </p>
         )}
       </div>
 
@@ -161,23 +136,28 @@ const ProductForm: React.FC<ProductFormProps> = ({
         >
           Price ($)
         </label>
-        <input
-          type="number"
-          id="PRICE"
+        <Controller
           name="PRICE"
-          value={displayPrice}
-          onChange={handleChange}
-          min="0"
-          step="0.01"
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
-            errors.PRICE ? "border-red-500" : ""
-          }`}
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              value={field.value.toString()}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              type="number"
+              min="0"
+              step="0.01"
+              className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
+                errors.PRICE ? "border-red-500" : ""
+              }`}
+            />
+          )}
         />
         <p className="mt-1 text-xs text-gray-500">
           Enter price in dollars (e.g., 10.99)
         </p>
         {errors.PRICE && (
-          <p className="mt-1 text-sm text-red-600">{errors.PRICE}</p>
+          <p className="mt-1 text-sm text-red-600">{errors.PRICE.message}</p>
         )}
       </div>
 
@@ -188,19 +168,26 @@ const ProductForm: React.FC<ProductFormProps> = ({
         >
           Availability (units in stock)
         </label>
-        <input
-          type="number"
-          id="AVAILABLITY"
+        <Controller
           name="AVAILABLITY"
-          value={formData.AVAILABLITY}
-          onChange={handleChange}
-          min="0"
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
-            errors.AVAILABLITY ? "border-red-500" : ""
-          }`}
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              value={field.value}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              type="number"
+              min="0"
+              className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm transition-colors duration-200 ${
+                errors.AVAILABLITY ? "border-red-500" : ""
+              }`}
+            />
+          )}
         />
         {errors.AVAILABLITY && (
-          <p className="mt-1 text-sm text-red-600">{errors.AVAILABLITY}</p>
+          <p className="mt-1 text-sm text-red-600">
+            {errors.AVAILABLITY.message}
+          </p>
         )}
       </div>
 

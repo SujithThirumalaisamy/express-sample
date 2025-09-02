@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Order, Product } from "../../services/api";
 import { productsAPI } from "../../services/api";
 import {
   convertDbPriceToDisplay,
   convertDisplayPriceToDb,
 } from "../../utils/formatters";
+import CustomDropdown from "../common/CustomDropdown";
 
 interface OrderFormProps {
   order?: Order | null;
@@ -17,17 +21,38 @@ interface OrderFormProps {
   onCancel: () => void;
 }
 
+const schema = z.object({
+  PRODUCTID: z.string().min(1, "Product is required"),
+  QUANTITY: z.number().min(1, "Quantity must be greater than 0"),
+  ORDERPRICE: z.number().min(0.01, "Order price must be greater than 0"),
+  STATUS: z.string().min(1, "Status is required"),
+});
+
+type OrderFormData = z.infer<typeof schema>;
+
 const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState({
-    PRODUCTID: "",
-    QUANTITY: 1,
-    ORDERPRICE: 0,
-    STATUS: "PENDING",
-  });
-  const [displayPrice, setDisplayPrice] = useState(0);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+    reset,
+  } = useForm<OrderFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      PRODUCTID: "",
+      QUANTITY: 1,
+      ORDERPRICE: 0,
+      STATUS: "PENDING",
+    },
+  });
+
+  const watchedProductId = watch("PRODUCTID");
+  const watchedQuantity = watch("QUANTITY");
 
   useEffect(() => {
     fetchProducts();
@@ -36,15 +61,30 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
   useEffect(() => {
     if (order) {
       const displayPriceValue = convertDbPriceToDisplay(order.ORDERPRICE);
-      setFormData({
+      reset({
         PRODUCTID: order.PRODUCTID,
         QUANTITY: Number(order.QUANTITY),
-        ORDERPRICE: order.ORDERPRICE,
+        ORDERPRICE: displayPriceValue,
         STATUS: order.STATUS,
       });
-      setDisplayPrice(displayPriceValue);
     }
-  }, [order]);
+  }, [order, reset]);
+
+  // Auto-calculate order price when product or quantity changes
+  useEffect(() => {
+    if (watchedProductId && watchedQuantity > 0) {
+      const selectedProduct = products.find(
+        (p) => p.ROWID === watchedProductId,
+      );
+      if (selectedProduct) {
+        const productDisplayPrice = convertDbPriceToDisplay(
+          selectedProduct.PRICE,
+        );
+        const totalPrice = productDisplayPrice * watchedQuantity;
+        setValue("ORDERPRICE", totalPrice);
+      }
+    }
+  }, [watchedProductId, watchedQuantity, products, setValue]);
 
   const fetchProducts = async () => {
     try {
@@ -58,139 +98,23 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
     }
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.PRODUCTID.trim()) {
-      newErrors.PRODUCTID = "Product is required";
-    }
-
-    if (!formData.QUANTITY || formData.QUANTITY <= 0) {
-      newErrors.QUANTITY = "Quantity must be greater than 0";
-    }
-
-    if (displayPrice <= 0) {
-      newErrors.ORDERPRICE = "Order price must be greater than 0";
-    }
-
-    if (!formData.STATUS.trim()) {
-      newErrors.STATUS = "Status is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const dbPrice = convertDisplayPriceToDb(displayPrice);
-      const orderData = {
-        ...formData,
-        ORDERPRICE: dbPrice,
-        QUANTITY: Number(formData.QUANTITY),
-      };
-      onSubmit(orderData);
-    }
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = e.target;
-
-    if (name === "ORDERPRICE") {
-      const priceValue = parseFloat(value) || 0;
-      setDisplayPrice(priceValue);
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
-
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
-  };
-
-  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const productId = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      PRODUCTID: productId,
-    }));
-
-    // Auto-calculate order price based on selected product
-    if (productId) {
-      const selectedProduct = products.find((p) => p.ROWID === productId);
-      if (selectedProduct) {
-        const quantity = formData.QUANTITY || 1;
-        const productDisplayPrice = convertDbPriceToDisplay(
-          selectedProduct.PRICE,
-        );
-        const totalPrice = productDisplayPrice * quantity;
-        setFormData((prev) => ({
-          ...prev,
-          PRODUCTID: productId,
-        }));
-        setDisplayPrice(totalPrice);
-      }
-    }
-
-    // Clear error when user starts typing
-    if (errors.PRODUCTID) {
-      setErrors((prev) => ({
-        ...prev,
-        PRODUCTID: "",
-      }));
-    }
-  };
-
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const quantity = parseInt(e.target.value) || 1;
-    setFormData((prev) => ({
-      ...prev,
-      QUANTITY: quantity,
-    }));
-
-    // Auto-calculate order price based on quantity
-    if (formData.PRODUCTID) {
-      const selectedProduct = products.find(
-        (p) => p.ROWID === formData.PRODUCTID,
-      );
-      if (selectedProduct) {
-        const productDisplayPrice = convertDbPriceToDisplay(
-          selectedProduct.PRICE,
-        );
-        const totalPrice = productDisplayPrice * quantity;
-        setFormData((prev) => ({
-          ...prev,
-          QUANTITY: quantity,
-        }));
-        setDisplayPrice(totalPrice);
-      }
-    }
-
-    // Clear error when user starts typing
-    if (errors.QUANTITY) {
-      setErrors((prev) => ({
-        ...prev,
-        QUANTITY: "",
-      }));
-    }
+  const onSubmitForm = (data: OrderFormData) => {
+    const dbPrice = convertDisplayPriceToDb(data.ORDERPRICE);
+    const orderData = {
+      ...data,
+      ORDERPRICE: dbPrice,
+      QUANTITY: Number(data.QUANTITY),
+    };
+    console.log("orderData", orderData);
+    onSubmit(orderData);
   };
 
   const getSelectedProduct = () => {
-    return products.find((p) => p.ROWID === formData.PRODUCTID);
+    return products.find((p) => p.ROWID === watchedProductId);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold mb-4">
           {order ? "Edit Order" : "Add New Order"}
@@ -204,25 +128,30 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
         >
           Product
         </label>
-        <select
-          id="PRODUCTID"
+        <Controller
           name="PRODUCTID"
-          value={formData.PRODUCTID}
-          onChange={handleProductChange}
-          disabled={loading}
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed ${
-            errors.PRODUCTID ? "border-red-500" : ""
-          }`}
-        >
-          <option value="">Select a product...</option>
-          {products.map((product) => (
-            <option key={product.ROWID} value={product.ROWID}>
-              {product.NAME} - ${product.PRICE}
-            </option>
-          ))}
-        </select>
+          control={control}
+          render={({ field }) => (
+            <CustomDropdown
+              autoFocus={true}
+              options={products.map((product) => ({
+                value: product.ROWID!,
+                label: product.NAME,
+              }))}
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select a product..."
+              disabled={loading}
+              error={!!errors.PRODUCTID}
+              searchable={true}
+              className="mt-1"
+            />
+          )}
+        />
         {errors.PRODUCTID && (
-          <p className="mt-1 text-sm text-red-600">{errors.PRODUCTID}</p>
+          <p className="mt-1 text-sm text-red-600">
+            {errors.PRODUCTID.message}
+          </p>
         )}
       </div>
 
@@ -233,19 +162,24 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
         >
           Quantity
         </label>
-        <input
-          type="number"
-          id="QUANTITY"
+        <Controller
           name="QUANTITY"
-          min="1"
-          value={formData.QUANTITY.toString()}
-          onChange={handleQuantityChange}
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm ${
-            errors.QUANTITY ? "border-red-500" : ""
-          }`}
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              value={field.value.toString()}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              type="number"
+              min="1"
+              className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm ${
+                errors.QUANTITY ? "border-red-500" : ""
+              }`}
+            />
+          )}
         />
         {errors.QUANTITY && (
-          <p className="mt-1 text-sm text-red-600">{errors.QUANTITY}</p>
+          <p className="mt-1 text-sm text-red-600">{errors.QUANTITY.message}</p>
         )}
       </div>
 
@@ -256,20 +190,27 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
         >
           Order Price ($)
         </label>
-        <input
-          type="number"
-          id="ORDERPRICE"
+        <Controller
           name="ORDERPRICE"
-          min="0"
-          step="0.01"
-          value={displayPrice}
-          onChange={handleChange}
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm ${
-            errors.ORDERPRICE ? "border-red-500" : ""
-          }`}
+          control={control}
+          render={({ field }) => (
+            <input
+              {...field}
+              value={field.value.toString()}
+              onChange={(e) => field.onChange(Number(e.target.value))}
+              type="number"
+              min="0"
+              step="0.01"
+              className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm ${
+                errors.ORDERPRICE ? "border-red-500" : ""
+              }`}
+            />
+          )}
         />
         {errors.ORDERPRICE && (
-          <p className="mt-1 text-sm text-red-600">{errors.ORDERPRICE}</p>
+          <p className="mt-1 text-sm text-red-600">
+            {errors.ORDERPRICE.message}
+          </p>
         )}
       </div>
 
@@ -280,27 +221,33 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
         >
           Status
         </label>
-        <select
-          id="STATUS"
+        <Controller
           name="STATUS"
-          value={formData.STATUS}
-          onChange={handleChange}
-          className={`rounded-none mt-1 block w-full border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm ${
-            errors.STATUS ? "border-red-500" : ""
-          }`}
-        >
-          <option value="PENDING">Pending</option>
-          <option value="PROCESSING">Processing</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
+          control={control}
+          render={({ field }) => (
+            <CustomDropdown
+              options={[
+                { value: "PENDING", label: "Pending" },
+                { value: "PROCESSING", label: "Processing" },
+                { value: "COMPLETED", label: "Completed" },
+                { value: "CANCELLED", label: "Cancelled" },
+              ]}
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select status..."
+              error={!!errors.STATUS}
+              searchable={false}
+              className="mt-1"
+            />
+          )}
+        />
         {errors.STATUS && (
-          <p className="mt-1 text-sm text-red-600">{errors.STATUS}</p>
+          <p className="mt-1 text-sm text-red-600">{errors.STATUS.message}</p>
         )}
       </div>
 
       {/* Order Summary */}
-      {formData.PRODUCTID && (
+      {watchedProductId && (
         <div className="border-t border-gray-200 pt-4 mt-6 bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
             <svg
@@ -326,16 +273,17 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
                   {getSelectedProduct()?.NAME}
                 </div>
                 <div className="text-sm text-gray-500">
-                  Qty: {formData.QUANTITY} × $
-                  {getSelectedProduct()?.PRICE.toFixed(2)}
+                  Qty: {watchedQuantity} × $
+                  {getSelectedProduct()
+                    ? convertDbPriceToDisplay(
+                        getSelectedProduct()!.PRICE,
+                      ).toFixed(2)
+                    : "0.00"}
                 </div>
               </div>
               <div className="text-right">
                 <div className="font-medium text-gray-900">
-                  $
-                  {(convertDbPriceToDisplay(formData.ORDERPRICE) || 0).toFixed(
-                    2,
-                  )}
+                  ${watch("ORDERPRICE")?.toFixed(2) || "0.00"}
                 </div>
               </div>
             </div>
@@ -347,8 +295,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
                 Total Amount
               </span>
               <span className="text-2xl font-bold text-orange-600">
-                $
-                {(convertDbPriceToDisplay(formData.ORDERPRICE) || 0).toFixed(2)}
+                ${watch("ORDERPRICE")?.toFixed(2) || "0.00"}
               </span>
             </div>
           </div>

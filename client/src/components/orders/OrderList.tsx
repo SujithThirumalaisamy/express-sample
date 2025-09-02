@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ordersAPI, Order, Product } from "../../services/api";
-import { productsAPI } from "../../services/api";
+import React, { useState, useMemo } from "react";
+import { Order, Product } from "../../services/api";
 import { useToast } from "../../contexts/ToastContext";
 import {
   formatCompactPrice,
@@ -9,80 +8,63 @@ import {
   calculateAverageOrderValue,
 } from "../../utils/formatters";
 import OrderForm from "./OrderForm";
+import {
+  useOrders,
+  useCreateOrder,
+  useUpdateOrder,
+  useDeleteOrder,
+} from "../../hooks";
+import { useProducts } from "../../hooks";
 
 const OrderList: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
   const { showError, showSuccess } = useToast();
 
-  useEffect(() => {
-    fetchOrders();
-    fetchProducts();
-  }, []);
+  // React Query hooks
+  const {
+    data: orders = [],
+    isLoading: ordersLoading,
+    error: ordersError,
+  } = useOrders();
+  const { data: products = [], isLoading: productsLoading } = useProducts();
+  const createOrderMutation = useCreateOrder();
+  const updateOrderMutation = useUpdateOrder();
+  const deleteOrderMutation = useDeleteOrder();
 
-  useEffect(() => {
-    filterOrders();
-  }, [orders, searchTerm]);
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await ordersAPI.getAll();
-      setOrders(response.data);
-    } catch (err) {
-      showError("Failed to fetch orders");
-      console.error("Error fetching orders:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProducts = async () => {
-    try {
-      const response = await productsAPI.getAll();
-      setProducts(response.data);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-    }
-  };
-
-  const filterOrders = () => {
+  // Filter orders based on search term
+  const filteredOrders = useMemo(() => {
     if (!searchTerm.trim()) {
-      setFilteredOrders(orders);
-    } else {
-      const filtered = orders.filter((order) => {
-        const product = products.find((p) => p.ROWID === order.PRODUCTID);
-        const productName = product?.NAME || order.PRODUCTID;
-
-        const productMatch = productName
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-
-        const statusMatch = order.STATUS.toLowerCase().includes(
-          searchTerm.toLowerCase(),
-        );
-
-        return productMatch || statusMatch;
-      });
-      setFilteredOrders(filtered);
+      return orders;
     }
-  };
+    return orders.filter((order: Order) => {
+      const product = products.find(
+        (p: Product) => p.ROWID === order.PRODUCTID,
+      );
+      const productName = product?.NAME || order.PRODUCTID;
+
+      const productMatch = productName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+      const statusMatch = order.STATUS.toLowerCase().includes(
+        searchTerm.toLowerCase(),
+      );
+
+      return productMatch || statusMatch;
+    });
+  }, [orders, products, searchTerm]);
 
   const getProductName = (productId: string): string => {
-    const product = products.find((p) => p.ROWID === productId);
+    const product = products.find((p: Product) => p.ROWID === productId);
     return product?.NAME || productId;
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this order?")) {
       try {
-        await ordersAPI.delete(id);
-        setOrders(orders.filter((order) => order.ROWID !== id));
+        await deleteOrderMutation.mutateAsync(id);
         showSuccess("Order deleted successfully");
       } catch (err) {
         showError("Failed to delete order");
@@ -104,24 +86,13 @@ const OrderList: React.FC = () => {
   ) => {
     try {
       if (editingOrder) {
-        await ordersAPI.update(editingOrder.ROWID!, orderData);
-        setOrders(
-          orders.map((o) =>
-            o.ROWID === editingOrder.ROWID
-              ? {
-                  ...orderData,
-                  ROWID: o.ROWID,
-                  CREATORID: o.CREATORID,
-                  CREATEDTIME: o.CREATEDTIME,
-                  MODIFIEDTIME: o.MODIFIEDTIME,
-                }
-              : o,
-          ),
-        );
+        await updateOrderMutation.mutateAsync({
+          id: editingOrder.ROWID!,
+          orderData,
+        });
         showSuccess("Order updated successfully");
       } else {
-        const response = await ordersAPI.create(orderData);
-        setOrders([...orders, response.data]);
+        await createOrderMutation.mutateAsync(orderData);
         showSuccess("Order created successfully");
       }
       setShowForm(false);
@@ -156,10 +127,26 @@ const OrderList: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (ordersLoading || productsLoading) {
     return (
       <div className="flex justify-center items-center h-[85vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
+
+  if (ordersError) {
+    return (
+      <div className="flex justify-center items-center h-[85vh]">
+        <div className="text-center">
+          <div className="text-red-600 text-lg mb-2">Error loading orders</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -218,7 +205,10 @@ const OrderList: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-600">
-                {filteredOrders.filter((o) => o.STATUS === "PENDING").length}
+                {
+                  filteredOrders.filter((o: Order) => o.STATUS === "PENDING")
+                    .length
+                }
               </div>
               <div className="text-sm text-gray-600">Pending Orders</div>
             </div>
@@ -263,7 +253,7 @@ const OrderList: React.FC = () => {
       {/* Orders Grid */}
       {filteredOrders.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredOrders.map((order) => (
+          {filteredOrders.map((order: Order) => (
             <div key={order.ROWID} className="bg-white overflow-hidden shadow">
               <div className="p-6">
                 <div className="flex items-start justify-between">
@@ -390,7 +380,7 @@ const OrderList: React.FC = () => {
       {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-[600px] max-w-[90vw] shadow-lg bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-[600px] max-w-[90vw] max-h-[80vh] md:max-h-[80vh] h-[100vh] md:h-auto shadow-lg bg-white overflow-y-auto">
             <OrderForm
               order={editingOrder}
               onSubmit={handleFormSubmit}
