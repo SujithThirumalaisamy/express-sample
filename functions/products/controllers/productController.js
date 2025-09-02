@@ -34,24 +34,8 @@ class ProductController {
     try {
       const requestHandler = new RequestHandler(req);
       const parsedData = await requestHandler.parseJsonBody();
-
-      const requiredFields = ["NAME", "DISCRIPTION", "PRICE", "AVAILABLITY"];
-      if (!requestHandler.validateRequiredFields(parsedData, requiredFields)) {
-        this.responseHandler.send(
-          400,
-          "400 Bad Request, Missing required fields: " +
-            requiredFields.join(", "),
-        );
-        return;
-      }
-
-      const productData = requestHandler.extractFields(
-        parsedData,
-        requiredFields,
-      );
-
       const createdProduct =
-        await this.productService.createProduct(productData);
+        await this.productService.createProduct(parsedData);
       this.responseHandler.json(createdProduct);
     } catch (error) {
       console.error("Error creating product:", error);
@@ -77,24 +61,9 @@ class ProductController {
       }
 
       const parsedData = await requestHandler.parseJsonBody();
-      const requiredFields = ["NAME", "DISCRIPTION", "PRICE", "AVAILABLITY"];
-
-      if (!requestHandler.validateRequiredFields(parsedData, requiredFields)) {
-        this.responseHandler.send(
-          400,
-          "400 Bad Request, Missing required fields: " +
-            requiredFields.join(", "),
-        );
-        return;
-      }
-
-      const productData = requestHandler.extractFields(
-        parsedData,
-        requiredFields,
-      );
       const updatedProduct = await this.productService.updateProduct(
         product_id,
-        productData,
+        parsedData,
       );
       this.responseHandler.json(updatedProduct);
     } catch (error) {

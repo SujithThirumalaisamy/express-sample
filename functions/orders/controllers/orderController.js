@@ -33,22 +33,7 @@ class OrderController {
     try {
       const requestHandler = new RequestHandler(req);
       const parsedData = await requestHandler.parseJsonBody();
-
-      const requiredFields = ["PRODUCTID", "QUANTITY", "ORDERPRICE", "STATUS"];
-      if (!requestHandler.validateRequiredFields(parsedData, requiredFields)) {
-        this.responseHandler.send(
-          400,
-          "400 Bad Request, Missing required fields: " +
-            requiredFields.join(", "),
-        );
-        return;
-      }
-
-      const orderData = requestHandler.extractFields(
-        parsedData,
-        requiredFields,
-      );
-      const createdOrder = await this.orderService.createOrder(orderData);
+      const createdOrder = await this.orderService.createOrder(parsedData);
       this.responseHandler.json(createdOrder);
     } catch (error) {
       console.error("Error creating order:", error);
@@ -74,24 +59,9 @@ class OrderController {
       }
 
       const parsedData = await requestHandler.parseJsonBody();
-      const requiredFields = ["PRODUCTID", "QUANTITY", "ORDERPRICE", "STATUS"];
-
-      if (!requestHandler.validateRequiredFields(parsedData, requiredFields)) {
-        this.responseHandler.send(
-          400,
-          "400 Bad Request, Missing required fields: " +
-            requiredFields.join(", "),
-        );
-        return;
-      }
-
-      const orderData = requestHandler.extractFields(
-        parsedData,
-        requiredFields,
-      );
       const updatedOrder = await this.orderService.updateOrder(
         order_id,
-        orderData,
+        parsedData,
       );
       this.responseHandler.json(updatedOrder);
     } catch (error) {

@@ -32,6 +32,7 @@ module.exports = async (req, res) => {
       responseHandler,
     );
 
+    console.info("Invoking the latest update 1");
     switch (method) {
       case "GET":
         await productController.handleGet(req, url);

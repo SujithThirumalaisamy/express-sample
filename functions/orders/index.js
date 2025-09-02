@@ -29,6 +29,7 @@ module.exports = async (req, res) => {
     const orderService = new OrderService(table);
     const orderController = new OrderController(orderService, responseHandler);
 
+    console.info("Invoking the latest update 1");
     switch (method) {
       case "GET":
         await orderController.handleGet(req, url);

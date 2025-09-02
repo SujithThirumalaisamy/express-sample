@@ -1,24 +1,26 @@
 /**
- * Formats a number to a compact representation
- * Examples: 1, 10, 100, 1k, 10k, 100k, 1m, 1.5m, etc.
+ * Formats a number to a compact representation with decimal precision
+ * Examples: 999 -> "999", 1000 -> "1.00k", 109990 -> "109.99k"
  */
 export const formatCompactNumber = (num: number): string => {
   if (num < 1000) {
     return num.toString();
   }
 
-  if (num < 1000000) {
-    const thousands = num / 1000;
-    return thousands % 1 === 0 ? `${thousands}k` : `${thousands.toFixed(1)}k`;
+  const units = [
+    { value: 1e9, suffix: "b" },
+    { value: 1e6, suffix: "m" },
+    { value: 1e3, suffix: "k" },
+  ];
+
+  for (const unit of units) {
+    if (num >= unit.value) {
+      const compact = num / unit.value;
+      return `${compact.toFixed(2)}${unit.suffix}`;
+    }
   }
 
-  if (num < 1000000000) {
-    const millions = num / 1000000;
-    return millions % 1 === 0 ? `${millions}m` : `${millions.toFixed(1)}m`;
-  }
-
-  const billions = num / 1000000000;
-  return billions % 1 === 0 ? `${billions}b` : `${billions.toFixed(1)}b`;
+  return num.toString(); // fallback
 };
 
 /**
@@ -76,10 +78,13 @@ export const formatCompactPrice = (
 export const calculateTotalRevenue = (
   orders: Array<{ ORDERPRICE: number | string }>,
 ): number => {
-  return orders.reduce((sum, order) => {
-    const displayPrice = convertDbPriceToDisplay(order.ORDERPRICE);
+  const revenue = orders.reduce((sum, order) => {
+    const displayPrice = Number(order.ORDERPRICE);
     return sum + displayPrice;
   }, 0);
+  console.log({ revenue });
+  console.log({ formatted: formatCompactPrice(revenue) });
+  return revenue;
 };
 
 /**
