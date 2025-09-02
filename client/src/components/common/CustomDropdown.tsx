@@ -175,15 +175,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
             />
           </svg>
         </div>
-
-        {/* Selected Option Subtitle */}
-        {!isSearching && selectedOption && selectedOption.subtitle && (
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <span className="text-xs text-gray-500">
-              {selectedOption.subtitle}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Dropdown Menu */}

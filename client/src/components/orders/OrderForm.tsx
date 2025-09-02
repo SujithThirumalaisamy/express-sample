@@ -137,6 +137,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, onSubmit, onCancel }) => {
               options={products.map((product) => ({
                 value: product.ROWID!,
                 label: product.NAME,
+                subtitle: `$ ${convertDbPriceToDisplay(product.PRICE)}`,
               }))}
               value={field.value}
               onChange={field.onChange}
